@@ -1,7 +1,7 @@
 Deployzilla
 ===========
 
-GIT post install scripts
+GIT post-recieve deployment tool
 
 .. code-block::
 
