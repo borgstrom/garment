@@ -3,7 +3,8 @@ Deployzilla
 
 GIT post install scripts
 
-Rawr::
+.. code-block::
+
               |\_.---n--n--n---._/|
               ||.----.^ ^ ^,----.||
               /. .---.\ ^ /.---. .\
