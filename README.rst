@@ -1,7 +1,7 @@
 Deployzilla
 ===========
 
-GIT post-recieve deployment tool
+Fabric_ based deployment toolset.
 
 .. code-block::
 
@@ -22,3 +22,5 @@ GIT post-recieve deployment tool
         |  :||: |-   - --- --   | :||  :|
         |  :\|: |  -      -   - | :|/  :|
     l42_\____`__|_______________|__'___:/____
+
+.. _Fabric: http://fabfile.org/
