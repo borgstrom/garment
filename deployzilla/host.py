@@ -1,2 +1,0 @@
-class Host(object):
-    pass
