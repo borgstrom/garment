@@ -1,9 +1,56 @@
 import fabric.api as fab
 
-
 @fab.task
-@fab.roles('app', 'db')
-def run(category, release):
+def run(commands, prefix=None, cd=None, shell_env=None):
+    """
+    This is a shell around the fabric run command that allows for conditional
+    use of the prefix, cd & shell_env context managers.
+
+    :param commands: A list of commands to run
+    :param prefix: An optional prefix to use
+    :param cd:  An optional working directory
+    :param shell_env: An optional dict of shell env variables
+    :return:
+    """
+    def _run():
+        "closure to make running the commands reusable"
+        for command in commands:
+            fab.run(command)
+
+    # this is so ugly, but I couldn't come up with a better way to do it
+    # without making things terribly complicated
+    # TODO make this better somehow
+    # XXX maybe this can help: http://stackoverflow.com/a/5359988
+    if prefix is not None and cd is not None and shell_env is not None:
+        with fab.cd(cd):
+            with fab.prefix(prefix):
+                with fab.shell_env(**shell_env):
+                    _run()
+    elif prefix is not None and shell_env is not None:
+        with fab.prefix(prefix):
+            with fab.shell_env(**shell_env):
+                _run()
+    elif cd is not None and shell_env is not None:
+        with fab.cd(cd):
+            with fab.shell_env(**shell_env):
+                _run()
+    elif cd is not None and prefix is not None:
+        with fab.cd(cd):
+            with fab.prefix(prefix):
+                _run()
+    elif cd is not None:
+        with fab.cd(cd):
+            _run()
+    elif prefix is not None:
+        with fab.prefix(prefix):
+            _run()
+    elif shell_env is not None:
+        with fab.shell_env(**shell_env):
+            _run()
+    else:
+        _run()
+
+def execute(category, release):
     """
     Run all stages in the specified category for the specified release
 
@@ -15,7 +62,7 @@ def run(category, release):
         return fab.warn("No stages defined in your config")
 
     if category not in fab.env.config['stages']:
-        return fab.warn("No steps defined in the '%s' stage category" % category)
+        return fab.warn("No stages defined in the '%s' category" % category)
 
     # set our base command variables
     variables = {
@@ -48,7 +95,10 @@ def run(category, release):
             fab.warn("The supplied commands are no in the correct format: %s" % stage['commands'])
             continue
 
-        fab.puts("Running stage: %s" % stage['id'])
+        roles = stage.get('roles')
+
+        fab.puts("Running stage: %s (roles: %s)" % (stage['id'],
+                                                    ", ".join(roles)))
 
         prefix = command_template(stage.get('prefix'))
         cd = command_template(stage.get('cd'))
@@ -60,40 +110,10 @@ def run(category, release):
         else:
             shell_env = None
 
-        def _run():
-            "closure to make running the templated commands reusable"
-            for command in stage['commands']:
-                fab.run(command_template(command))
+        commands = [
+            command_template(command)
+            for command in stage['commands']
+        ]
 
-        # this is so ugly, but I couldn't come up with a better way to do it
-        # without making things terribly complicated
-        # TODO make this better somehow
-        # XXX maybe this can help: http://stackoverflow.com/a/5359988
-        if prefix is not None and cd is not None and shell_env is not None:
-            with fab.cd(cd):
-                with fab.prefix(prefix):
-                    with fab.shell_env(**shell_env):
-                        _run()
-        elif prefix is not None and shell_env is not None:
-            with fab.prefix(prefix):
-                with fab.shell_env(**shell_env):
-                    _run()
-        elif cd is not None and shell_env is not None:
-            with fab.cd(cd):
-                with fab.shell_env(**shell_env):
-                    _run()
-        elif cd is not None and prefix is not None:
-            with fab.cd(cd):
-                with fab.prefix(prefix):
-                    _run()
-        elif cd is not None:
-            with fab.cd(cd):
-                _run()
-        elif prefix is not None:
-            with fab.prefix(prefix):
-                _run()
-        elif shell_env is not None:
-            with fab.shell_env(**shell_env):
-                _run()
-        else:
-            _run()
+        fab.execute(run, commands, prefix, cd, shell_env,
+                    roles=roles)

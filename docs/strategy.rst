@@ -29,9 +29,8 @@ Roles
 Roles are arbitrary items that you create that can be used to control which of
 the different Stages you define run on which Hosts.
 
-Roles are entirely optional if your deployment scenario doesn't require them,
-however due to YAML syntax requirements you will still need to define roles on
-your Hosts you just wont have to define them on your Stages.
+There is a special role named ``all`` that is used for targeting all hosts by
+internal Garment operations (like sending the release)
 
 Hosts
 -----

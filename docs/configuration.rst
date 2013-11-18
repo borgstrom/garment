@@ -46,8 +46,7 @@ Hosts
 -----
 Hosts are defined inside an item named ``hosts``` at the root of the
 environment configuration. The Host definition is the SSH connection
-string used for the host. You must define their roles, even if you are
-not going to use roles when you define the Stages::
+string used for the host. You must also define their roles::
 
     # My deployment configuration
     production:
@@ -100,22 +99,25 @@ list and then continues the standard dictionary syntax::
       stages:
         before:
           - id: my_stage
+            roles: ['app']
             cd: ~/current/
             commands:
               - prep_environment
 
           - id: second_stage
+            roles: ['app']
             commands:
               - prep_database
               - migrate_database
 
         after:
           - id: after_stage
+            roles: ['app']
             commands:
               - restart_app_server
 
-Each Stage is made up of an ``id`` and a list of ``commands``. Stages can also
-contain the following extra configuration items:
+Each Stage is made up of an ``id``, a list of ``roles`` and a list of
+``commands``. Stages can also contain the following extra configuration items:
 
 * **cd** - Change to the specified directory prior to executing the ``commands``
 * **prefix** - Prefix a command onto all the other commands, for example you
@@ -127,6 +129,7 @@ Example with all extra items::
 
     # database migration & static assets
     - id: django
+      roles: ['app']
       cd: '%(pythonpath)s'
       prefix: '%(activate)s'
       shell_env:

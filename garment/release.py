@@ -52,10 +52,9 @@ def prepare(ref):
     return release_name
 
 @fab.task
-@fab.roles('app', 'db')
 def send(release_name):
     """
-    Sends the specified release file to the 'app' & 'db' servers
+    Sends the specified release file to the servers
 
     :param release_name: The release name (returned from prepare_release)
     :return: None
@@ -69,7 +68,6 @@ def send(release_name):
         fab.run("rm -f ./%s.tar" % release_name)
 
 @fab.task
-@fab.roles('app', 'db')
 def make_current(release_name):
     """
     Makes the specified release the current one
@@ -82,7 +80,6 @@ def make_current(release_name):
     fab.run("rm -f %s && ln -s %s/%s %s" % (current_symlink, releases_dir, release_name, current_symlink))
 
 @fab.task
-@fab.roles('app', 'db')
 def clean_up():
     """
     Cleans up the release folder

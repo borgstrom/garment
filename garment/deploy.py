@@ -18,8 +18,12 @@ def deploy(target, config_file="deploy.conf"):
     if 'hosts' not in fab.env.config:
         return fab.abort("The target '%s' does not define any hosts." % target)
 
-    roles = {}
+    roles = {
+        'all': []
+    }
     for hostname, hostconfig in fab.env.config['hosts'].iteritems():
+        roles['all'].append(hostname)
+
         for role in hostconfig['roles']:
             if role not in roles:
                 roles[role] = [hostname]
@@ -36,19 +40,20 @@ def deploy(target, config_file="deploy.conf"):
     release_name = release.prepare(fab.env.config['git_ref'])
 
     # send the release to the hosts
-    fab.execute(release.send, release_name)
+    fab.execute(release.send, release_name, role='all')
 
     # clean up our local temp copy
     fab.local("rm -f /tmp/%s.tar" % release_name)
 
     # run our before tasks for this release
-    fab.execute(stages.run, "before", release_name)
+    stages.execute("before", release_name)
 
     # update the current symlink
-    fab.execute(release.make_current, release_name)
+    fab.execute(release.make_current, release_name, role='all')
 
     # run our after tasks for this release
-    fab.execute(stages.run, "after", release_name)
+    stages.execute("after", release_name)
 
     # clean up the releases directory
-    fab.execute(release.clean_up)
+    fab.execute(release.clean_up, role='all')
+
