@@ -80,3 +80,25 @@ def make_current(release_name):
     releases_dir = fab.env.config.get('releases_dir', '~/releases/')
     current_symlink = fab.env.config.get('current_symlink', '~/current')
     fab.run("rm -f %s && ln -s %s/%s %s" % (current_symlink, releases_dir, release_name, current_symlink))
+
+@fab.task
+@fab.roles('app', 'db')
+def clean_up():
+    """
+    Cleans up the release folder
+
+    :return: None
+    """
+    keep_releases = fab.env.config.get('keep_releases', 10)
+    releases_dir = fab.env.config.get('releases_dir', '~/releases/')
+
+    # build the command line to cleanup the releases directory
+    commands = [
+        "find %s/* -maxdepth 0 -printf '%%T@ %%p\\n'" % releases_dir,
+        "sort -k 1 -n",
+        "awk '{print $2}'",
+        "head -n -%d" % keep_releases,
+        "xargs rm -fr"
+    ]
+
+    fab.run("|".join(commands))

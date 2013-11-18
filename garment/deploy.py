@@ -50,6 +50,5 @@ def deploy(target, config_file="deploy.conf"):
     # run our after tasks for this release
     fab.execute(stages.run, "after", release_name)
 
-    # clean up the releases
-    # TODO
-    #fab.execute(release.clean_up)
+    # clean up the releases directory
+    fab.execute(release.clean_up)
