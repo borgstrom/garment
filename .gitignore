@@ -6,3 +6,7 @@
 
 # pycharm
 .idea/
+
+# setup files
+dist/
+*.egg-info/
