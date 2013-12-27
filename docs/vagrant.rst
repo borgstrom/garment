@@ -1,9 +1,9 @@
 Vagrant wrapper
 ===============
-Garment provides a simple interface to utilize Fabric on your `Vargrant`_
+Garment provides a simple interface to utilize Fabric on your Vargrant_
 instances. It does this by providing you an object named ``vagrant`` that you
 can import into your ``fabfile.py`` that exposes ``run`` & ``sudo`` methods
-that work on the `Vagrant`_ instance of the current working directory.
+that work on the Vagrant_ instance of the current working directory.
 
 Usage
 -----
