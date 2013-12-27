@@ -21,5 +21,6 @@ Contents:
 
    strategy.rst
    configuration.rst
+   vagrant.rst
 
 .. _fabric: http://fabfile.org/

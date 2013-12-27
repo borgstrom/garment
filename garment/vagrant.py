@@ -4,6 +4,17 @@ This file provides a convenient way to use Fabric on your Vagrant box
 Import the local vagrant instance (at the bottom) into your fabfile and
 then you can call .run & .sudo and have them work on your current vagrant
 instance
+
+Example:
+
+    from fabric.api import task
+
+    from garment.vagrant import vagrant
+
+    @task
+    def vagrant_uptime():
+        vagrant.run("uptime")
+
 """
 import fabric.api as fab
 
