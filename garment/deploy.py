@@ -34,16 +34,17 @@ def deploy(target, config_file="deploy.conf"):
     fab.env.roledefs.update(roles)
 
     # prepare the release file
+    if 'git_repo' not in fab.env.config:
+        return fab.abort("The target '%s' does not specify a git_repo." % target)
+
     if 'git_ref' not in fab.env.config:
         return fab.abort("The target '%s' does not specify a git_ref." % target)
 
-    release_name = release.prepare(fab.env.config['git_ref'])
+    # get our release name
+    release_name = release.name()
 
-    # send the release to the hosts
-    fab.execute(release.send, release_name, role='all')
-
-    # clean up our local temp copy
-    fab.local("rm -f /tmp/%s.tar" % release_name)
+    # create the release on the hosts
+    fab.execute(release.create, release_name, role='all')
 
     # run our before tasks for this release
     stages.execute("before", release_name)
@@ -56,4 +57,3 @@ def deploy(target, config_file="deploy.conf"):
 
     # clean up the releases directory
     fab.execute(release.clean_up, role='all')
-

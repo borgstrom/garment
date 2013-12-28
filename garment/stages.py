@@ -69,18 +69,24 @@ def execute(category, release):
         'release': release
     }
 
+    def variable_template(value):
+        "closure to make the variable templating reusable"
+        if value:
+            try:
+                return value.format(**variables)
+            except KeyError as exc:
+                fab.abort("Undefined variable requested: {exc}\nOriginal value we tried to parse: {value}".format(
+                    exc=exc,
+                    value=value
+                ))
+
     # if we have command variables in our config merge them
     if 'variables' in fab.env.config:
         # we use a for loop here and apply the command variables to each new
         # item we encounter, this allows you to incrementally use the variables
         for definition in fab.env.config['variables']:
             for name, value in definition.iteritems():
-                variables[name] = value % variables
-
-    def command_template(str):
-        "closure to make the command templating reusable"
-        if str:
-            return str % variables
+                variables[name] = variable_template(value)
 
     for stage in fab.env.config['stages'][category]:
         if 'id' not in stage:
@@ -100,18 +106,18 @@ def execute(category, release):
         fab.puts("Running stage: %s (roles: %s)" % (stage['id'],
                                                     ", ".join(roles)))
 
-        prefix = command_template(stage.get('prefix'))
-        cd = command_template(stage.get('cd'))
+        prefix = variable_template(stage.get('prefix'))
+        cd = variable_template(stage.get('cd'))
 
         if 'shell_env' in stage:
             shell_env = {}
             for env_name in stage['shell_env']:
-                shell_env[env_name] = command_template(stage['shell_env'][env_name])
+                shell_env[env_name] = variable_template(stage['shell_env'][env_name])
         else:
             shell_env = None
 
         commands = [
-            command_template(command)
+            variable_template(command)
             for command in stage['commands']
         ]
 
