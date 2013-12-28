@@ -1,6 +1,24 @@
 import fabric.api as fab
 
+import datetime
 import os
+
+def name():
+    """
+    Generate a release name with the ISO8601 date and the short rev tag
+    from the ref in our repository
+    """
+    now = datetime.datetime.utcnow()
+    release_ref = fab.local("git ls-remote {git_repo} {git_ref} | head -n 1 | awk '{{print substr($1,0,7)}}'".format(
+        git_repo=fab.env.config['git_repo'],
+        git_ref=fab.env.config['git_ref'],
+    ), capture=True)
+    release_name = "-".join((
+        now.strftime("%Y%m%dT%H%M%S%z"),
+        release_ref
+    ))
+
+    return release_name
 
 @fab.task
 def create(release_name):
@@ -58,7 +76,7 @@ def make_current(release_name):
     :param release_name: The release name (returned from prepare_release)
     :return:
     """
-    releases_dir = fab.env.config.get('releases_dir', '~/releases/')
+    releases_dir = fab.env.config.get('releases_dir', '~/releases')
     current_symlink = fab.env.config.get('current_symlink', '~/current')
     fab.run("rm -f %s && ln -s %s/%s %s" % (current_symlink, releases_dir, release_name, current_symlink))
 

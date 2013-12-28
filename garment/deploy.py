@@ -1,4 +1,3 @@
-import datetime
 import os
 
 import fabric.api as fab
@@ -41,12 +40,8 @@ def deploy(target, config_file="deploy.conf"):
     if 'git_ref' not in fab.env.config:
         return fab.abort("The target '%s' does not specify a git_ref." % target)
 
-    # generate a release filename
-    now = datetime.datetime.utcnow()
-    release_name = "-".join((
-        now.strftime("%Y%m%d"),
-        now.strftime("%H%M%S")
-    ))
+    # get our release name
+    release_name = release.name()
 
     # create the release on the hosts
     fab.execute(release.create, release_name, role='all')
