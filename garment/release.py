@@ -1,71 +1,54 @@
-import datetime
-
 import fabric.api as fab
 
+import os
+
 @fab.task
-def prepare(ref):
+def create(release_name):
     """
-    Create a git archive of the current working directory
+    Create a release on each host with the name specified
     """
-    fab.puts("Preparing release file for ref: %s" % ref)
+    ref = fab.env.config['git_ref']
+    repo_url = fab.env.config['git_repo']
+    repo_name = os.path.basename(repo_url)
+    releases_dir = fab.env.config.get('releases_dir', '~/releases/')
 
-    # this ensures our ref exists as fabric will bail out if it doesn't
-    short_ref = fab.local("git rev-parse --short %s" % ref, capture=True)
+    fab.puts("Getting latest commits from our repository...")
+    fab.run("test -d ~/{repo_name} || git clone --recurse-submodules {repo_url} {repo_name}".format(
+        repo_name=repo_name,
+        repo_url=repo_url
+    ), pty=False)
 
-    # generate a release filename
-    now = datetime.datetime.utcnow()
-    release_name = "%s-%s-%s" % (
-        now.strftime("%Y.%m.%d"),
-        now.strftime("%H.%M.%S"),
-        short_ref
-    )
+    with fab.cd("~/%s" % repo_name):
+        host_repo_url = fab.run("git remote -v | grep ^origin | head -n 1 | awk '{print $2}'")
 
-    # use git to archive it locally
-    fab.local("git archive --format=tar --prefix=%s/ %s | (cd /tmp; tar xf -)" % (
-        release_name,
-        short_ref,
-    ))
+        if host_repo_url != repo_url:
+            return fab.abort("The repository URL doesn't match the URL in our config. Cowardly refusing to continue...")
 
-    # now find any submodules
-    fab.puts("Looking for submodules...")
-    git_submodules = fab.local("find . -mindepth 2 -name .git -print | xargs grep -l '^gitdir:'", capture=True)
-    for submodule in git_submodules.splitlines():
-        submodule = submodule.lstrip("./").rstrip("/.git")
+        fab.run("git checkout {ref}".format(ref=ref))
+        fab.run("git pull origin {ref}".format(ref=ref))
 
-        submodule_ref = fab.local("git submodule status %s | awk '{print $1}'" % submodule, capture=True)
-
-        # archive it
-        fab.local("(cd %s; git archive --format=tar --prefix=%s/%s/ %s) | (cd /tmp; tar xf -)" % (
-            submodule,
-            release_name,
-            submodule,
-            submodule_ref
+        # use git to archive it
+        fab.run("git archive --format=tar --prefix={release_name}/ {ref} | (cd {releases_dir}; tar xf -)".format(
+            release_name=release_name,
+            ref=ref,
+            releases_dir=releases_dir
         ))
 
-    # now pack up the main archive and clean up our working dir
-    fab.local("(cd /tmp; tar zcf %s.tar %s && rm -fr %s)" % (
-        release_name,
-        release_name,
-        release_name
-    ))
+        # now find any submodules
+        fab.puts("Looking for submodules...")
+        git_submodules = fab.run("find . -mindepth 2 -name .git -print | xargs grep -l '^gitdir:'")
+        for submodule in git_submodules.splitlines():
+            submodule = submodule.lstrip("./").rstrip("/.git")
 
-    return release_name
+            submodule_ref = fab.run("git submodule status %s | awk '{print $1}'" % submodule)
 
-@fab.task
-def send(release_name):
-    """
-    Sends the specified release file to the servers
-
-    :param release_name: The release name (returned from prepare_release)
-    :return: None
-    """
-    releases_dir = fab.env.config.get('releases_dir', '~/releases/')
-    fab.run("mkdir -p %s" % releases_dir)
-    fab.put("/tmp/%s.tar" % release_name,
-            "%s%s.tar" % (releases_dir, release_name))
-    with fab.cd("~/releases"):
-        fab.run("tar zxpf ./%s.tar" % release_name)
-        fab.run("rm -f ./%s.tar" % release_name)
+            # archive it
+            fab.run("(cd {submodule}; git archive --format=tar --prefix={release_name}/{submodule}/ {submodule_ref}) | (cd {releases_dir}; tar xf -)".format(
+                submodule=submodule,
+                release_name=release_name,
+                submodule_ref=submodule_ref,
+                releases_dir=releases_dir
+            ))
 
 @fab.task
 def make_current(release_name):

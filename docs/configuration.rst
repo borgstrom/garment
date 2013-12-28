@@ -30,9 +30,11 @@ Base configuration
 There are some release related configuration values that you must define
 at the base of your environment.
 
-* ``git_ref`` - This is the the git reference that will be used for the
-  deployment in this environment. It should be fully formed, for example:
-  ``refs/remotes/origin/master``. This is required.
+* ``git_origin`` - This is the git URL that will be used as the ``origin`` for
+  the bare repository created on each host. This is required.
+* ``git_ref`` - This is the git reference that will be used for the deployment
+  in this environment. A branch or tag, for example: ``master``. This is
+  required.
 * ``keep_releases`` - This should be set to the number of historical releases
   you want to keep on each host. This is optional and defaults to ``10``.
 * ``releases_dir`` - This is the file system path that is a directory and will
@@ -59,7 +61,7 @@ The roles are completely arbitrary and up to you to define and name. We do
 recommend the following as standard role names:
 
 * **web** - HTTP(S) server hosts (often only needed in situations where your
-  application has specific server configuration requirements that is managed
+  application has specific server configuration requirements that are managed
   by the Garment deployment process)
 * **app** - Application server hosts (most typically used role)
 * **db** - Database server hosts (needed if migrations or SQL scripts need to
@@ -79,13 +81,14 @@ Variables are defined under the ``variables`` entry inside an environment::
       ...
       variables:
         - foo: 'Hello'
-        - bar: '%(foo)s World'
-        - baz: '%(bar) from Garment'
+        - bar: '{foo} World'
+        - baz: '{bar} from Garment'
 
 ``baz`` would be equal to "Hello World from Garment"
 
 As illustrated above you reference variables using the standard Python named
-string formatting syntax.
+string formatting syntax. Each variable is passed all previous variables as
+keyword args using the Python string `.format() method`_.
 
 Stages
 ------
@@ -139,3 +142,6 @@ Example with all extra items::
         - django-admin.py syncdb
         - django-admin.py migrate
         - django-admin.py collectstatic --noinput
+
+
+.. _.format() method: http://docs.python.org/2/library/string.html#format-string-syntax
