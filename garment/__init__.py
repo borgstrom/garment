@@ -1,1 +1,1 @@
-from .deploy import deploy
+from .deploy import *

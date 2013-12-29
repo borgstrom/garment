@@ -1,6 +1,5 @@
 import fabric.api as fab
 
-@fab.task
 def run(commands, prefix=None, cd=None, shell_env=None):
     """
     This is a shell around the fabric run command that allows for conditional
@@ -103,8 +102,8 @@ def execute(category, release):
 
         roles = stage.get('roles')
 
-        fab.puts("Running stage: %s (roles: %s)" % (stage['id'],
-                                                    ", ".join(roles)))
+        fab.puts("\nRunning stage: %s (roles: %s)" % (stage['id'],
+                                                      ", ".join(roles)))
 
         prefix = variable_template(stage.get('prefix'))
         cd = variable_template(stage.get('cd'))

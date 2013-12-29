@@ -22,5 +22,6 @@ setup(name='garment',
       ],
       install_requires=[
           'setuptools',
-          'fabric>=1.8,<=1.9'
+          'fabric>=1.8,<=1.9',
+          'iso8601>=0.1,<=0.2'
       ])

@@ -1,9 +1,11 @@
+.. _configuration:
+
 Deployment Configuration
 ========================
-
 The whole deploy process is configured through a file named ``deploy.conf`` in
 your project root. This is a YAML_ file that describes your environment, hosts
 that are involved, and how tasks are run on these hosts.
+
 
 Environments
 ------------
@@ -24,6 +26,9 @@ When you invoke a deployment with ``fab`` you will pass the name of the
 environment you want to deploy as the argument to the ``deploy`` task::
 
     fab deploy:production
+
+
+.. _base-configuration:
 
 Base configuration
 ------------------
@@ -92,9 +97,11 @@ keyword args using the Python string `.format() method`_.
 
 Stages
 ------
-Stages are defined under their **before** and **after** categories. They use
-the YAML list of dictionaries syntax where each stage starts with defining a
-list and then continues the standard dictionary syntax::
+Stages are defined under the **before**, **after** and **rollback** categories.
+They are all optional.
+
+They use the YAML list of dictionaries syntax where each stage starts with
+defining a list and then continues the standard dictionary syntax::
 
     # My deployment configuration
     production:
