@@ -2,18 +2,20 @@
 
 from setuptools import setup
 
-import versioneer
+import re
 
-versioneer.versionfile_source = 'garment/_version.py'
-versioneer.versionfile_build = 'garment/_version.py'
-versioneer.tag_prefix = '' # versions are like '1.0.4'
-versioneer.parentdir_prefix = 'garment-' # dir names are like 'garment-1.0.4'
+# load our version from our init file
+init_data = open('garment/__init__.py').read()
+matches = re.search(r"__version__ = '([^']+)'", init_data, re.M)
+if matches:
+    version = matches.group(1)
+else:
+    raise RuntimeError("Unable to load version")
 
 setup(name='garment',
       packages=['garment'],
       include_package_data=True,
-      version=versioneer.get_version(),
-      cmdclass=versioneer.get_cmdclass(),
+      version=version,
       license="Apache License, Version 2.0",
       description='A collection of fabric tasks that roll up into a single deploy function. The whole process is coordinated through a single deployment configuration file named deploy.conf',
       long_description=open('README.rst').read(),
