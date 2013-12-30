@@ -22,5 +22,6 @@ setup(name='garment',
       ],
       install_requires=[
           'setuptools',
+          'PyYAML',
           'fabric>=1.8,<=1.9'
       ])
