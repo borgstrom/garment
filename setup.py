@@ -14,6 +14,7 @@ else:
 
 setup(name='garment',
       packages=['garment'],
+      scripts=['scripts/deploy'],
       include_package_data=True,
       version=version,
       license="Apache License, Version 2.0",

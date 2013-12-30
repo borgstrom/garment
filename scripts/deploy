@@ -1,0 +1,12 @@
+#!/bin/sh
+#
+# Simple wrapper for Garment's deploy process
+#
+
+if [ "$1" == "list" ]; then
+    exec fab list
+elif [ "$1" == "rollback" ]; then
+    shift
+    exec fab rollback:$*
+else
+    exec fab deploy:$*
