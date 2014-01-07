@@ -22,7 +22,7 @@ setup(name='garment',
       long_description=open('README.rst').read(),
       author='Evan Borgstrom',
       author_email='evan@borgstrom.ca',
-      url='https://github.com/fatbox/garment',
+      url='https://github.com/borgstrom/garment',
       classifiers=[
           'Development Status :: 3 - Alpha',
           'Intended Audience :: Developers',
