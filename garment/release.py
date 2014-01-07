@@ -89,7 +89,7 @@ def make_current(release_name):
         current_symlink = fab.env.config.get('current_symlink', '~/current')
         fab.run("rm -f %s && ln -s %s/%s %s" % (current_symlink, releases_dir, release_name, current_symlink))
 
-def clean_up():
+def cleanup():
     """
     Cleans up the release folder
 
