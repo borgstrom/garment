@@ -8,7 +8,7 @@ import config
 import release
 import stages
 
-__all__ = ('deploy', 'list')
+__all__ = ('deploy', 'list', 'rollback')
 
 @fab.task
 def deploy(target, config_file="deploy.conf"):
@@ -19,7 +19,7 @@ def deploy(target, config_file="deploy.conf"):
     config.load(target, config_file)
 
     # get our release name
-    release_name = release.name()
+    release_name = release.name(target)
 
     fab.puts("Deploying new release: %s" % release_name)
 
@@ -36,16 +36,9 @@ def deploy(target, config_file="deploy.conf"):
     stages.execute("after", release_name)
 
     # clean up the releases directory
-    fab.execute(release.clean_up, role='all')
+    fab.execute(release.cleanup, role='all')
 
-@fab.task
-def list(target, config_file="deploy.conf"):
-    """
-    Lists the releases available on your hosts
-    """
-    # load our config file
-    config.load(target, config_file)
-
+def get_releases():
     with fab.hide('output', 'running'):
         ret = fab.execute(release.list, role='all')
 
@@ -62,6 +55,18 @@ def list(target, config_file="deploy.conf"):
     # sort the releases
     releases = [r for r in releases]
     releases.sort()
+
+    return releases
+
+@fab.task
+def list(target, config_file="deploy.conf"):
+    """
+    Lists the releases available on your hosts
+    """
+    # load our config file
+    config.load(target, config_file)
+
+    releases = get_releases()
 
     fab.puts("Available releases:")
     for rel in releases:
@@ -81,3 +86,28 @@ def list(target, config_file="deploy.conf"):
             rel=rel,
             release_name=release_name
         ))
+
+@fab.task
+def rollback(target, release, config_file="deploy.conf"):
+    # load our config file
+    config.load(target, config_file)
+
+    releases = get_releases()
+
+    if release not in releases:
+        fab.abort("The release {release} is not valid".format(
+            release=release
+        ))
+
+    fab.puts("Rolling back to release: {release}".format(
+        release=release
+    ))
+
+    # run our rollback tasks for this release
+    stages.execute("rollback", release)
+
+    # update the current symlink
+    fab.execute(release.make_current, release, role='all')
+
+    # run our after tasks for this release
+    stages.execute("after", release)
