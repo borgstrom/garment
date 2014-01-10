@@ -3,7 +3,7 @@ import fabric.api as fab
 import datetime
 import os
 
-def name():
+def name(target):
     """
     Generate a release name with the ISO8601 date and the short rev tag
     from the ref in our repository
@@ -33,12 +33,12 @@ def create(release_name):
     """
     ref = fab.env.config['git_ref']
     repo_url = fab.env.config['git_repo']
-    repo_name = os.path.basename(repo_url)
+    repo_name = repo_url.split(':')[1].split('.')[0]
     releases_dir = fab.env.config.get('releases_dir', '~/releases/')
 
     fab.puts("Getting latest commits from our repository...")
     with fab.hide('output', 'running'):
-        fab.run("test -d ~/{repo_name} || git clone --recurse-submodules {repo_url} {repo_name}".format(
+        fab.run("test -d ~/{repo_name} || git clone --recursive {repo_url} {repo_name}".format(
             repo_name=repo_name,
             repo_url=repo_url
         ), pty=False)
@@ -54,6 +54,9 @@ def create(release_name):
 
         # use git to archive it
         fab.puts("Archiving release...")
+        fab.run("mkdir -p {releases_dir}".format(
+            releases_dir=releases_dir
+        ))
         fab.run("git archive --format=tar --prefix={release_name}/ {ref} | (cd {releases_dir}; tar xf -)".format(
             release_name=release_name,
             ref=ref,
@@ -62,7 +65,7 @@ def create(release_name):
 
         # now find any submodules
         fab.puts("Looking for submodules...")
-        git_submodules = fab.run("find . -mindepth 2 -name .git -print | xargs grep -l '^gitdir:'")
+        git_submodules = fab.run("find . -mindepth 2 -name .git -print | xargs -r grep -l '^gitdir:'")
         for submodule in git_submodules.splitlines():
             submodule = submodule.lstrip("./").rstrip("/.git")
 

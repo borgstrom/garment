@@ -19,7 +19,7 @@ def deploy(target, config_file="deploy.conf"):
     config.load(target, config_file)
 
     # get our release name
-    release_name = release.name()
+    release_name = release.name(target)
 
     fab.puts("Deploying new release: %s" % release_name)
 
