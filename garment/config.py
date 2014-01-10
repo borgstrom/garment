@@ -40,6 +40,12 @@ def load(target, config_file):
     if target not in config:
         return fab.abort("The target '%s' is not defined in the config." % target)
 
+    # enable agent forwarding by default
+    if 'forward_agent' in config and config['forward_agent'] == False:
+        fab.env.forward_agent = False
+    else:
+        fab.env.forward_agent = True
+
     # reset our config to the target as the root
     fab.env.config = config[target]
     fab.env.config_loaded = (target, config_file)
