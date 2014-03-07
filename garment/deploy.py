@@ -1,5 +1,3 @@
-import os
-
 import fabric.api as fab
 
 import iso8601
@@ -9,6 +7,7 @@ import release
 import stages
 
 __all__ = ('deploy', 'list', 'rollback')
+
 
 @fab.task
 def deploy(target, config_file="deploy.conf"):
@@ -38,6 +37,7 @@ def deploy(target, config_file="deploy.conf"):
     # clean up the releases directory
     fab.execute(release.cleanup, role='all')
 
+
 def get_releases():
     with fab.hide('output', 'running'):
         ret = fab.execute(release.list, role='all')
@@ -57,6 +57,7 @@ def get_releases():
     releases.sort()
 
     return releases
+
 
 @fab.task
 def list(target, config_file="deploy.conf"):
@@ -86,6 +87,7 @@ def list(target, config_file="deploy.conf"):
             rel=rel,
             release_name=release_name
         ))
+
 
 @fab.task
 def rollback(target, release, config_file="deploy.conf"):
