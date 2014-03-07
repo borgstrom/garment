@@ -54,53 +54,57 @@ def create(release_name):
                     source_dir=source_dir
                 ), pty=False)
 
-    with fab.hide(*_HIDE), fab.cd(source_dir):
-        host_repo_url = fab.run("git remote -v | grep ^origin | head -n 1 | awk '{print $2}'")
+    with fab.hide(*_HIDE):
+        with fab.cd(source_dir):
+            host_repo_url = fab.run("git remote -v | grep ^origin | head -n 1 | awk '{print $2}'")
 
-        if host_repo_url != repo_url:
-            return fab.abort("The repository URL doesn't match the URL in our config. "
-                             "Cowardly refusing to continue...")
+            if host_repo_url != repo_url:
+                return fab.abort("The repository URL doesn't match the URL in our config. "
+                                 "Cowardly refusing to continue...")
 
-        fab.run("git checkout {git_ref}".format(git_ref=git_ref))
-        fab.run("git pull origin")
+            fab.run("git checkout {git_ref}".format(git_ref=git_ref))
+            fab.run("git pull origin")
 
-        # use git to archive it
-        fab.puts("Archiving release...")
-        fab.run("test -d {releases_dir} || mkdir -p {releases_dir}".format(
-            releases_dir=releases_dir
-        ))
-        fab.run("git archive --format=tar --prefix={release_name}/ {git_ref} | "
-                "(cd {releases_dir}; tar xf -)".format(
-                    release_name=release_name,
-                    git_ref=git_ref,
-                    releases_dir=releases_dir
-                ))
-
-        # now find any submodules
-        fab.puts("Looking for submodules...")
-        with fab.settings(fab.hide('warnings'), warn_only=True):
-            # we hide warnings and don't fail here as xargs returns a non-zero
-            # exit status if there is no input passed to it
-            git_submodules = fab.run("find . -mindepth 2 -name .git -print | "
-                                     "xargs grep -l '^gitdir:'")
-
-        for submodule in git_submodules.splitlines():
-            submodule = submodule.lstrip("./").rstrip("/.git")
-
-            submodule_ref = fab.run("git submodule status %s | awk '{print $1}'" % submodule)
-
-            # archive it
-            fab.puts(" -> Archiving %s..." % submodule)
-            fab.run("("
-                    "cd {submodule}; "
-                    "git archive --format=tar --prefix={release_name}/{submodule}/ {submodule_ref}"
-                    ") | "
+            # use git to archive it
+            fab.puts("Archiving release...")
+            fab.run("test -d {releases_dir} || mkdir -p {releases_dir}".format(
+                releases_dir=releases_dir
+            ))
+            fab.run("git archive --format=tar --prefix={release_name}/ {git_ref} | "
                     "(cd {releases_dir}; tar xf -)".format(
-                        submodule=submodule,
                         release_name=release_name,
-                        submodule_ref=submodule_ref,
+                        git_ref=git_ref,
                         releases_dir=releases_dir
                     ))
+
+            # now find any submodules
+            fab.puts("Looking for submodules...")
+            with fab.settings(fab.hide('warnings'), warn_only=True):
+                # we hide warnings and don't fail here as xargs returns a non-zero
+                # exit status if there is no input passed to it
+                git_submodules = fab.run("find . -mindepth 2 -name .git -print | "
+                                         "xargs grep -l '^gitdir:'")
+
+            for submodule in git_submodules.splitlines():
+                submodule = submodule.lstrip("./").rstrip("/.git")
+
+                submodule_ref = fab.run("git submodule status %s | awk '{print $1}'" % submodule)
+                prefix = "{release_name}/{submodule}/".format(
+                    submodule=submodule,
+                    release_name=release_name,
+                )
+
+                # archive it
+                fab.puts(" -> Archiving %s..." % submodule)
+                fab.run("("
+                        "cd {submodule}; "
+                        "git archive --format=tar --prefix={prefix} {submodule_ref}"
+                        ") | "
+                        "(cd {releases_dir}; tar xf -)".format(
+                            submodule_ref=submodule_ref,
+                            prefix=prefix,
+                            releases_dir=releases_dir
+                        ))
 
 
 def make_current(release_name):
