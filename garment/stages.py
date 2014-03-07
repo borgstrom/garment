@@ -1,5 +1,8 @@
 import fabric.api as fab
 
+from .config import variable_template
+
+
 def run(commands, prefix=None, cd=None, shell_env=None):
     """
     This is a shell around the fabric run command that allows for conditional
@@ -49,6 +52,7 @@ def run(commands, prefix=None, cd=None, shell_env=None):
     else:
         _run()
 
+
 def execute(category, release):
     """
     Run all stages in the specified category for the specified release
@@ -62,30 +66,6 @@ def execute(category, release):
 
     if category not in fab.env.config['stages']:
         return fab.warn("No stages defined in the '%s' category" % category)
-
-    # set our base command variables
-    variables = {
-        'release': release
-    }
-
-    def variable_template(value):
-        "closure to make the variable templating reusable"
-        if value:
-            try:
-                return value.format(**variables)
-            except KeyError as exc:
-                fab.abort("Undefined variable requested: {exc}\nOriginal value we tried to parse: {value}".format(
-                    exc=exc,
-                    value=value
-                ))
-
-    # if we have command variables in our config merge them
-    if 'variables' in fab.env.config:
-        # we use a for loop here and apply the command variables to each new
-        # item we encounter, this allows you to incrementally use the variables
-        for definition in fab.env.config['variables']:
-            for name, value in definition.iteritems():
-                variables[name] = variable_template(value)
 
     for stage in fab.env.config['stages'][category]:
         if 'id' not in stage:

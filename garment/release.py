@@ -3,66 +3,88 @@ import fabric.api as fab
 import datetime
 import os
 
-def name():
-    """
+from .config import conf
+
+_HIDE = ['output', 'running']
+_HIDE = []
+
+
+def name(target):
+    '''
     Generate a release name with the ISO8601 date and the short rev tag
     from the ref in our repository
-    """
-    if 'git_repo' not in fab.env.config:
-        return fab.abort("The target '%s' does not specify a git_repo." % target)
-
-    if 'git_ref' not in fab.env.config:
-        return fab.abort("The target '%s' does not specify a git_ref." % target)
-
-    with fab.hide('output', 'running'):
+    '''
+    with fab.hide(*_HIDE):
         now = datetime.datetime.utcnow()
-        release_ref = fab.local("git ls-remote {git_repo} {git_ref} | head -n 1 | awk '{{print substr($1,0,7)}}'".format(
-            git_repo=fab.env.config['git_repo'],
-            git_ref=fab.env.config['git_ref'],
-        ), capture=True)
+        release_ref = fab.local('git ls-remote {repo_url} {git_ref} | '
+                                'head -n 1 | '
+                                "awk '{{print substr($1,0,7)}}'".format(
+                                    repo_url=conf('repo_url'),
+                                    git_ref=conf('git_ref'),
+                                ),
+                                capture=True)
         release_name = "-".join((
             now.strftime("%Y%m%dT%H%M%S%z"),
             release_ref
         ))
 
+    # set some extra variables
+    fab.env.config['variables']['release'] = release_name
+    fab.env.config['variables']['release_dir'] = os.path.join(
+        conf('releases_dir'),
+        release_name
+    )
+
     return release_name
 
+
 def create(release_name):
-    """
+    '''
     Create a release on each host with the name specified
-    """
-    ref = fab.env.config['git_ref']
-    repo_url = fab.env.config['git_repo']
-    repo_name = os.path.basename(repo_url)
-    releases_dir = fab.env.config.get('releases_dir', '~/releases/')
+    '''
+    git_ref = conf('git_ref')
+    repo_url = conf('repo_url')
+    source_dir = conf('source_dir')
+    releases_dir = conf('releases_dir')
 
     fab.puts("Getting latest commits from our repository...")
-    with fab.hide('output', 'running'):
-        fab.run("test -d ~/{repo_name} || git clone --recurse-submodules {repo_url} {repo_name}".format(
-            repo_name=repo_name,
-            repo_url=repo_url
-        ), pty=False)
+    with fab.hide(*_HIDE):
+        fab.run("test -d {source_dir} || "
+                "git clone --recursive {repo_url} {source_dir}".format(
+                    repo_url=repo_url,
+                    source_dir=source_dir
+                ), pty=False)
 
-    with fab.hide('output', 'running'), fab.cd("~/%s" % repo_name):
+    with fab.hide(*_HIDE), fab.cd(source_dir):
         host_repo_url = fab.run("git remote -v | grep ^origin | head -n 1 | awk '{print $2}'")
 
         if host_repo_url != repo_url:
-            return fab.abort("The repository URL doesn't match the URL in our config. Cowardly refusing to continue...")
+            return fab.abort("The repository URL doesn't match the URL in our config. "
+                             "Cowardly refusing to continue...")
 
-        fab.run("git checkout {ref}".format(ref=ref))
-        fab.run("git pull origin".format(ref=ref))
+        fab.run("git checkout {git_ref}".format(git_ref=git_ref))
+        fab.run("git pull origin")
 
         # use git to archive it
         fab.puts("Archiving release...")
-        fab.run("git archive --format=tar --prefix={release_name}/ {ref} | (cd {releases_dir}; tar xf -)".format(
-            release_name=release_name,
-            ref=ref,
+        fab.run("test -d {releases_dir} || mkdir -p {releases_dir}".format(
             releases_dir=releases_dir
         ))
+        fab.run("git archive --format=tar --prefix={release_name}/ {git_ref} | "
+                "(cd {releases_dir}; tar xf -)".format(
+                    release_name=release_name,
+                    git_ref=git_ref,
+                    releases_dir=releases_dir
+                ))
 
         # now find any submodules
         fab.puts("Looking for submodules...")
-        git_submodules = fab.run("find . -mindepth 2 -name .git -print | xargs grep -l '^gitdir:'")
+        with fab.settings(fab.hide('warnings'), warn_only=True):
+            # we hide warnings and don't fail here as xargs returns a non-zero
+            # exit status if there is no input passed to it
+            git_submodules = fab.run("find . -mindepth 2 -name .git -print | "
+                                     "xargs grep -l '^gitdir:'")
+
         for submodule in git_submodules.splitlines():
             submodule = submodule.lstrip("./").rstrip("/.git")
 
@@ -70,33 +92,44 @@ def create(release_name):
 
             # archive it
             fab.puts(" -> Archiving %s..." % submodule)
-            fab.run("(cd {submodule}; git archive --format=tar --prefix={release_name}/{submodule}/ {submodule_ref}) | (cd {releases_dir}; tar xf -)".format(
-                submodule=submodule,
-                release_name=release_name,
-                submodule_ref=submodule_ref,
-                releases_dir=releases_dir
-            ))
+            fab.run("("
+                    "cd {submodule}; "
+                    "git archive --format=tar --prefix={release_name}/{submodule}/ {submodule_ref}"
+                    ") | "
+                    "(cd {releases_dir}; tar xf -)".format(
+                        submodule=submodule,
+                        release_name=release_name,
+                        submodule_ref=submodule_ref,
+                        releases_dir=releases_dir
+                    ))
+
 
 def make_current(release_name):
-    """
+    '''
     Makes the specified release the current one
 
     :param release_name: The release name (returned from prepare_release)
     :return:
-    """
-    with fab.hide('output', 'running'):
-        releases_dir = fab.env.config.get('releases_dir', '~/releases')
-        current_symlink = fab.env.config.get('current_symlink', '~/current')
-        fab.run("rm -f %s && ln -s %s/%s %s" % (current_symlink, releases_dir, release_name, current_symlink))
+    '''
+    with fab.hide(*_HIDE):
+        releases_dir = conf('releases_dir')
+        current_symlink = conf('current_symlink')
+        fab.run("rm -f {current_symlink} && "
+                "ln -s {releases_dir}/{release_name} {current_symlink}".format(
+                    current_symlink=current_symlink,
+                    releases_dir=releases_dir,
+                    release_name=release_name
+                ))
 
-def clean_up():
-    """
+
+def cleanup():
+    '''
     Cleans up the release folder
 
     :return: None
-    """
-    keep_releases = fab.env.config.get('keep_releases', 10)
-    releases_dir = fab.env.config.get('releases_dir', '~/releases')
+    '''
+    keep_releases = conf('keep_releases')
+    releases_dir = conf('releases_dir')
 
     # build the command line to cleanup the releases directory
     commands = [
@@ -109,13 +142,14 @@ def clean_up():
 
     fab.run("|".join(commands))
 
+
 def list():
-    """
+    '''
     Lists all of the releases on the host
 
     :return: list of releases
-    """
-    releases_dir = fab.env.config.get('releases_dir', '~/releases')
+    '''
+    releases_dir = conf('releases_dir')
     ret = fab.run("/bin/ls {releases_dir}".format(
         releases_dir=releases_dir
     ))

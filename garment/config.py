@@ -1,17 +1,51 @@
 import os
+import yaml
 
 import fabric.api as fab
 
-import yaml
+from collections import OrderedDict
+
+
+class GarmentConfigError(Exception):
+    pass
+
+
+def variable_template(value, variables=None):
+    '''
+    Apply the config variables to the supplied value
+    '''
+    if value:
+        if not isinstance(value, basestring):
+            return value
+
+        if variables is None:
+            variables = fab.env.config['variables']
+
+        try:
+            return value.format(**variables)
+        except KeyError as exc:
+            fab.abort("Undefined variable requested: {exc}\n"
+                      "Original value we tried to parse: {value}".format(
+                          exc=exc,
+                          value=value
+                      ))
+
+
+def conf(name):
+    '''
+    Shortcut function for getting config items
+    '''
+    return variable_template(fab.env.config[name])
+
 
 def load(target, config_file):
-    """
+    '''
     Load into the environment the target config from the specified file
 
     :param target: The name of the target to load in the config
     :param config_file: The config file to load, relative to the fabfile
     :return: None
-    """
+    '''
     if 'config_loaded' in fab.env and \
             fab.env.config_loaded == (target, config_file):
         # we've already loaded our config for this target
@@ -63,11 +97,48 @@ def load(target, config_file):
     # set the roles with fabric
     fab.env.roledefs.update(roles)
 
+    variables = OrderedDict([])
+
+    # check required config items
+    for name in ('repo_url', 'git_ref', 'deploy_dir'):
+        if name not in fab.env.config:
+            raise GarmentConfigError('You must supply a "%s" value in the target "%s"' % (
+                name,
+                target
+            ))
+
+        # push it into the variables
+        variables[name] = fab.env.config[name]
+
+    # set our defaults
+    def default(name, default):
+        if name not in fab.env.config:
+            fab.env.config[name] = default
+
+        # push it into the variables
+        variables[name] = variable_template(fab.env.config[name], variables)
+
+    default('source_dir', '{deploy_dir}/source')
+    default('releases_dir', '{deploy_dir}/releases')
+    default('current_symlink', '{deploy_dir}/current')
+    default('keep_releases', 10)
+
+    if 'variables' in fab.env.config:
+        for definition in fab.env.config['variables']:
+            for name, val in definition.iteritems():
+                variables[name] = variable_template(val, variables)
+
+    fab.env.config['variables'] = variables
+
+    # process variables
+    print fab.env.config['variables']
+
+
 @fab.task
 def show(target, config_file):
-    """
+    '''
     Loads and pretty prints the specified targets config (for debugging)
-    """
+    '''
     load(target, config_file)
 
     import pprint

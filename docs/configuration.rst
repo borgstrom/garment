@@ -35,18 +35,24 @@ Base configuration
 There are some release related configuration values that you must define
 at the base of your environment.
 
-* ``git_origin`` - This is the git URL that will be used as the ``origin`` for
+* ``repo_url`` - This is the git URL that will be used as the ``origin`` for
   the bare repository created on each host. This is required.
 * ``git_ref`` - This is the git reference that will be used for the deployment
   in this environment. A branch or tag, for example: ``master``. This is
   required.
-* ``keep_releases`` - This should be set to the number of historical releases
-  you want to keep on each host. This is optional and defaults to ``10``.
+* ``deploy_dir`` - This is the base directory that should be used for all of
+  the deployment directories. Example: ``/home/user/deploy``. This is required.
+* ``source_dir`` - This holds the checked out git repository. This is optional
+  and defaults to ``{deploy_dir}/source``.
 * ``releases_dir`` - This is the file system path that is a directory and will
-  hold all of the releases. This is optional and defaults to ``~/releases/``.
+  hold all of the releases. This is optional and defaults to
+  ``{deploy_dir}/releases/``.
 * ``current_symlink`` - This is the file system path that garment will use as
   the "current" path. This path will always point to the latest release in the
-  releases directory. This is optional and defaults to ``~/current``.
+  releases directory. This is optional and defaults to
+  ``{deploy_dir}/current``.
+* ``keep_releases`` - This should be set to the number of historical releases
+  you want to keep on each host. This is optional and defaults to ``10``.
 
 
 Hosts
@@ -62,15 +68,10 @@ string used for the host. You must also define their roles::
         username@hostname.domain.tld:
           roles: ['role']
 
-The roles are completely arbitrary and up to you to define and name. We do
-recommend the following as standard role names:
+The roles are completely arbitrary and up to you to define and name in what
+ever way suits your project. They are used in the Stages below to target which
+hosts the each stage should run on.
 
-* **web** - HTTP(S) server hosts (often only needed in situations where your
-  application has specific server configuration requirements that are managed
-  by the Garment deployment process)
-* **app** - Application server hosts (most typically used role)
-* **db** - Database server hosts (needed if migrations or SQL scripts need to
-  be run from the local database host)
 
 Variables
 ---------
