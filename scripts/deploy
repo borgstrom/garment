@@ -10,3 +10,4 @@ elif [ "$1" == "rollback" ]; then
     exec fab rollback:$*
 else
     exec fab deploy:$*
+fi

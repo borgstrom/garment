@@ -152,4 +152,125 @@ Example with all extra items::
         - django-admin.py collectstatic --noinput
 
 
+Extending items
+---------------
+Often times when building deployment configurations you will find yourself
+repeating the same variables & stages. Garment configuration allows for one
+environment to extend another through the use of the ``extends`` keyword so
+that you can leverage reusability to keep your configuration concise and error
+free.
+
+Complete Django Example::
+
+    #
+    # Deployment configuration
+    #
+
+    staging:
+      forward_agent: True
+      repo_url: git@myhost.tld:myrepo.git
+      git_ref: develop
+      deploy_dir: /home/staging/deploy
+      keep_releases: 3
+
+      hosts:
+        staging@myhost.tld:
+          roles: ['app']
+
+      variables:
+        - home: '/home/staging'
+        - virtualenv: '{home}/virtualenv'
+        - activate: 'source {virtualenv}/bin/activate'
+        - pythonpath: '{current_symlink}/myapp'
+        - settings: 'myapp.settings.staging'
+        - logdir: '{home}/logs/application/'
+
+      stages:
+        before:
+          - id: dirs
+            roles: ['app']
+            commands:
+              - 'mkdir -p {logdir}'
+
+          - id: virtualenv
+            roles: ['app']
+            commands:
+              - '[ ! -d {virtualenv} ] && virtualenv {virtualenv} || echo "virtualenv exists"'
+              - 'rm -f virtualenv/lib/*/no-global-site-packages.txt'
+
+          - id: install
+            roles: ['app']
+            prefix: '{activate}'
+            shell_env:
+              PYTHONPATH: '{pythonpath}'
+              DJANGO_SETTINGS_MODULE: '{settings}'
+            commands:
+              - 'pip install -r {release_dir}/requirements/production.txt'
+        
+          - id: django
+            roles: ['app']
+            prefix: '{activate}'
+            shell_env:
+              PYTHONPATH: '{pythonpath}'
+              DJANGO_SETTINGS_MODULE: '{settings}'
+            commands:
+              - django-admin.py syncdb
+              - django-admin.py migrate
+              - django-admin.py collectstatic --noinput
+
+        after:
+          - id: restart
+            roles: ['app']
+            prefix: '{activate}'
+            commands:
+              - 'supervisorctl restart gunicorn'
+
+
+    preview:
+      extends: staging
+
+      deploy_dir: /home/preview/deploy
+
+      hosts:
+        preview@my-host.tld:
+          roles: ['app']
+
+      variables:
+        - home: '/home/preview'
+        - settings: 'myapp.settings.preview'
+
+      stages:
+        after:
+          - id: contrived
+            roles: ['app']
+            commands:
+              - 'echo "Just a silly example"'
+
+          - id: restart
+            roles: ['app']
+            prefix: '{activate}'
+            commands:
+              - 'supervisorctl restart gunicorn'
+              - 'echo "PREVIEW HAS BEEN RESTARTED"'
+
+
+Here you can see that the ``preview`` environment has specified
+``extends: staging`` as an option. When the configuration loader sees this it
+will merge the configuration from the ``preview`` environment together with
+the ``staging`` environment. 
+
+The ``hosts`` are not copied during the merge so you **always** need to specify
+hosts in an extended environment.
+
+The ``variables`` and ``stages`` are fully merged in the same order. That means
+if you have a variable named ``home`` in the base environment and its the 2nd
+variable defined when the ``home`` variable from the new extended environment
+is merged in it will also been the 2nd variable defined when the variable
+resolution is applied to the configuration. Anything defined in an extended
+environment that is not defined in a base environment will be appended. In the
+above example it means that even though the ``contrived`` step was defined
+before the ``restart`` step when the config is fully resolved the ``contrived``
+step will actually run after the ``restart`` step because the ``restart`` step
+overrode the restart step from the ``staging`` environment.
+
 .. _.format() method: http://docs.python.org/2/library/string.html#format-string-syntax

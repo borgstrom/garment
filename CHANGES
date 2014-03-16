@@ -1,0 +1,8 @@
+Garment Changelog
+=================
+
+Version: 0.4
+Released: March 16th, 2014
+
+* Added the ability to Extend configuration environments
+* Fixed the 'deploy' script
