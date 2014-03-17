@@ -56,11 +56,18 @@ def create(release_name):
 
     with fab.hide(*_HIDE):
         with fab.cd(source_dir):
-            host_repo_url = fab.run("git remote -v | grep ^origin | head -n 1 | awk '{print $2}'")
+            host_repo_url = fab.run("|".join([
+                "git remote -v",
+                "grep ^origin",
+                "head -n 1",
+                "awk '{print $2}'"
+            ]))
 
             if host_repo_url != repo_url:
-                return fab.abort("The repository URL doesn't match the URL in our config. "
-                                 "Cowardly refusing to continue...")
+                return fab.abort(
+                    "The repository URL doesn't match the URL in our config. "
+                    "Cowardly refusing to continue..."
+                )
 
             fab.run("git checkout {git_ref}".format(git_ref=git_ref))
             fab.run("git pull origin")
@@ -70,25 +77,31 @@ def create(release_name):
             fab.run("test -d {releases_dir} || mkdir -p {releases_dir}".format(
                 releases_dir=releases_dir
             ))
-            fab.run("git archive --format=tar --prefix={release_name}/ {git_ref} | "
-                    "(cd {releases_dir}; tar xf -)".format(
-                        release_name=release_name,
-                        git_ref=git_ref,
-                        releases_dir=releases_dir
-                    ))
+            fab.run("|".join([
+                "git archive --format=tar --prefix={release_name}/ {git_ref}",
+                "(cd {releases_dir}; tar xf -)".format(
+                    release_name=release_name,
+                    git_ref=git_ref,
+                    releases_dir=releases_dir)
+            ]))
 
             # now find any submodules
             fab.puts("Looking for submodules...")
             with fab.settings(fab.hide('warnings'), warn_only=True):
-                # we hide warnings and don't fail here as xargs returns a non-zero
-                # exit status if there is no input passed to it
-                git_submodules = fab.run("find . -mindepth 2 -name .git -print | "
-                                         "xargs grep -l '^gitdir:'")
+                # we hide warnings and don't fail here as xargs returns a
+                # non-zero exit status if there is no input passed to it
+                git_submodules = fab.run("|".join([
+                    "find . -mindepth 2 -name .git -print",
+                    "xargs grep -l '^gitdir:'"
+                ]))
 
             for submodule in git_submodules.splitlines():
                 submodule = submodule.lstrip("./").rstrip("/.git")
 
-                submodule_ref = fab.run("git submodule status %s | awk '{print $1}'" % submodule)
+                submodule_ref = fab.run("|".join([
+                    "git submodule status %s",
+                    "awk '{print $1}'" % submodule
+                ]))
                 prefix = "{release_name}/{submodule}/".format(
                     submodule=submodule,
                     release_name=release_name,
@@ -96,15 +109,17 @@ def create(release_name):
 
                 # archive it
                 fab.puts(" -> Archiving %s..." % submodule)
-                fab.run("("
-                        "cd {submodule}; "
-                        "git archive --format=tar --prefix={prefix} {submodule_ref}"
-                        ") | "
-                        "(cd {releases_dir}; tar xf -)".format(
-                            submodule_ref=submodule_ref,
-                            prefix=prefix,
-                            releases_dir=releases_dir
-                        ))
+                fab.run(
+                    "("
+                    "cd {submodule}; "
+                    "git archive --format=tar --prefix={prefix} {submodule_ref}"  # noqa
+                    ") | "
+                    "(cd {releases_dir}; tar xf -)".format(
+                        submodule_ref=submodule_ref,
+                        prefix=prefix,
+                        releases_dir=releases_dir
+                    )
+                )
 
 
 def make_current(release_name):
@@ -134,16 +149,23 @@ def cleanup():
     keep_releases = conf('keep_releases')
     releases_dir = conf('releases_dir')
 
-    # build the command line to cleanup the releases directory
-    commands = [
-        "find %s/* -maxdepth 0 -printf '%%T@ %%p\\n'" % releases_dir,
-        "sort -k 1 -n",
-        "awk '{print $2}'",
-        "head -n -%d" % keep_releases,
-        "xargs rm -fr"
-    ]
+    fab.puts("Cleaning up releases folder. Keeping %d latest releases" % (
+        keep_releases,
+    ))
+    with fab.hide(*_HIDE):
+        # build the command line to find the releases to cleanup
+        commands = [
+            "find %s/* -maxdepth 0 -printf '%%T@ %%p\\n'" % releases_dir,
+            "sort -k 1 -n",
+            "awk '{print $2}'",
+            "head -n -%d" % keep_releases,
+        ]
+        releases = fab.run("|".join(commands)).split()
 
-    fab.run("|".join(commands))
+        for fullpath in releases:
+            release = os.path.basename(fullpath)
+            fab.puts(" * Removing %s" % release)
+            fab.run("rm -fr %s" % fullpath)
 
 
 def list():

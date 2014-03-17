@@ -2,9 +2,9 @@ import fabric.api as fab
 
 import iso8601
 
-import config
-import release
-import stages
+from . import config
+from . import release
+from . import stages
 
 __all__ = ('deploy', 'list', 'rollback')
 

@@ -273,4 +273,9 @@ before the ``restart`` step when the config is fully resolved the ``contrived``
 step will actually run after the ``restart`` step because the ``restart`` step
 overrode the restart step from the ``staging`` environment.
 
+The above example shows two extra steps being added to the ``after`` stage, but
+in reality they are not needed and have been added purely to explain how the
+config loaded merges items. If you remove the two extra steps you can see that
+the configuration for preview becomes quite concise, less than 10 lines.
+
 .. _.format() method: http://docs.python.org/2/library/string.html#format-string-syntax
