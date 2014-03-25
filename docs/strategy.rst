@@ -1,8 +1,10 @@
+.. _strategy:
+
 Deployment Strategy
 ===================
 This document serves to outline the approach to deployment that Garment takes,
 and the associated conventions it defines based on this approach. See the
-:ref:`configuration` documentation for how the strategy is configured.
+:ref:`configuration` documentation for how you configure your deployments.
 
 
 Environments
@@ -18,9 +20,10 @@ your deployment needs.
 Releases
 --------
 Releases refer to an archive of an application that is identified by a time
-stamp (ISO8601) and the GIT reference from the ref that was deployed::
+stamp (ISO8601), the GIT reference and the user specification that deployed
+the release::
 
-    20131228T202753-4634f44
+    20131228T202753-4634f44-evan@pungi.local
 
 Releases are maintained in a designated folder on each of the Hosts and a
 configurable number of historical releases are kept around for easy rollbacks
@@ -33,20 +36,22 @@ To create a release the ``git archive`` command is used. We also support adding
 files from the submodules in a project.
 
 
+Hosts
+-----
+Hosts are the targets that you wish to deploy your application to. They can be
+assigned roles that can be used to only run certain Steps on certain Hosts when
+running the Stages.
+
+
 Roles
 -----
 Roles are arbitrary items that you create that can be used to control which of
 the different Stages you define run on which Hosts.
 
 There is a special role named ``all`` that is used for targeting all hosts by
-internal Garment operations (like sending the release)
-
-
-Hosts
------
-Hosts are the targets that you wish to deploy your application to. They can be
-assigned any number of roles that can be used to target them when running your
-Stages.
+internal Garment operations (like sending the release). You do not need to
+assign any roles to your hosts if you don't need them to accomplish your
+deployments.
 
 
 Stages
@@ -58,17 +63,15 @@ Stages make up the workflow of the deployment process and are named as follows:
 * **rollback**
 * **cleanup**
 
-Tasks within the Stages are defined as an ordered list and run in the order
+Steps within the Stages are defined as an ordered list and run in the order
 that they are defined.
 
-Inside each stage is some configuration about the execution environment
+Inside each Step is some configuration about the execution environment
 (working directory, command prefixes, environment variables, etc) and then
 an ordered list of shell commands that will be executed.
 
 All commands in a Stage must succeed for the Stage to be considered a success,
-if a Stage fails then deployment stops. This means that you can require that
-your projects tests pass prior to doing a production deployment to ensure you
-don't leave production broken due to an uncaught error.
+if a Step fails then deployment stops.
 
 Currently no clean up is done on failed deployments to ensure that you have the
 opportunity to investigate the failure manually while implementing your config.
@@ -134,6 +137,7 @@ Operations are the different workflows that Garment exposes. The following
 describes each of the operations and specifies which stages are run and in
 which order.
 
+
 Deploy
 ~~~~~~
 When you ask Garment to deploy it does the following:
@@ -143,6 +147,7 @@ When you ask Garment to deploy it does the following:
 #. Makes the new release the current release
 #. Runs the **after** stage
 
+
 Rollback
 ~~~~~~~~
 When you ask Garment to rollback it does the following:
@@ -150,5 +155,3 @@ When you ask Garment to rollback it does the following:
 #. Runs the **rollback** stage
 #. Makes the rollback release the current release
 #. Runs the **after** stage
-
-

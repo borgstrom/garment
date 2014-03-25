@@ -19,6 +19,7 @@ Contents:
 .. toctree::
    :maxdepth: 2
 
+   usage.rst
    strategy.rst
    configuration.rst
    vagrant.rst

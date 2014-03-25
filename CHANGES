@@ -1,6 +1,14 @@
 Garment Changelog
 =================
 
+Version 0.5
+Released: March 25th, 2014
+
+* Added a user@host tag to each release
+* Roles are now optional
+* Allow for include or exclude of steps during deploy so that you can skip
+  certain steps if you know you don't need them.
+
 Version 0.4.1
 Released: March 17th, 2014
 

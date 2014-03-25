@@ -100,7 +100,7 @@ def execute(category, release, include=None, exclude=None):
                      step['commands'])
             continue
 
-        roles = step.get('roles')
+        roles = step.get('roles', ['all'])
 
         fab.puts("\nRunning step: %s (roles: %s)" % (step['id'],
                                                      ", ".join(roles)))

@@ -27,6 +27,12 @@ environment you want to deploy as the argument to the ``deploy`` task::
 
     fab deploy:production
 
+.. tip::
+
+   Garment installs a script named ``deploy`` that is a shortcut for running
+   ``fab deploy:...``. If you were to run ``deploy production`` it would be
+   the same as running ``fab deploy:production``
+
 
 .. _base-configuration:
 
@@ -53,24 +59,27 @@ at the base of your environment.
   ``{deploy_dir}/current``.
 * ``keep_releases`` - This should be set to the number of historical releases
   you want to keep on each host. This is optional and defaults to ``10``.
+* ``forward_agent`` - This is ``True`` or ``False`` (default) and determines if
+  Fabric should forward your local agent connection when deploying.
 
 
 Hosts
 -----
 Hosts are defined inside an item named ``hosts``` at the root of the
-environment configuration. The Host definition is the SSH connection
-string used for the host. You must also define their roles::
+environment configuration. The Host definition is the SSH connection string
+used for the host. You can also define their roles if you will be using roles::
 
     # My deployment configuration
     production:
       ...
       hosts:
-        username@hostname.domain.tld:
-          roles: ['role']
+        deploy@hostname.domain.tld:
+        deploy@db-hostname.domain.tld:
+          roles: ['db']
+
 
 The roles are completely arbitrary and up to you to define and name in what
-ever way suits your project. They are used in the Stages below to target which
-hosts the each stage should run on.
+ever way suits your project.
 
 
 Variables
@@ -96,38 +105,45 @@ As illustrated above you reference variables using the standard Python named
 string formatting syntax. Each variable is passed all previous variables as
 keyword args using the Python string `.format() method`_.
 
+You can access any variables that have been previously defined as well as any
+of the top level configuration items in the environment. For example you could
+set a variable's value using the ``current_symlink`` config item::
+
+      variables:
+        - appdir: '{current_symlink}/myapp'
+
+
 Stages
 ------
-Stages are defined under the **before**, **after** and **rollback** categories.
-They are all optional.
-
-They use the YAML list of dictionaries syntax where each stage starts with
-defining a list and then continues the standard dictionary syntax::
+Stages are named **before**, **after** and **rollback**.  They are all
+optional. They use the YAML list of dictionaries syntax to define the Steps
+within them. Each step starts with defining a list and then continues the
+standard dictionary syntax::
 
     # My deployment configuration
     production:
       ...
       stages:
         before:
-          - id: my_stage
+          - id: my_step
             roles: ['app']
             cd: ~/current/
             commands:
               - prep_environment
 
-          - id: second_stage
+          - id: second_step
             roles: ['app']
             commands:
               - prep_database
               - migrate_database
 
         after:
-          - id: after_stage
+          - id: after_step
             roles: ['app']
             commands:
               - restart_app_server
 
-Each Stage is made up of an ``id``, a list of ``roles`` and a list of
+Each Step is made up of an ``id``, a list of ``roles`` and a list of
 ``commands``. Stages can also contain the following extra configuration items:
 
 * **cd** - Change to the specified directory prior to executing the ``commands``
@@ -141,11 +157,11 @@ Example with all extra items::
     # database migration & static assets
     - id: django
       roles: ['app']
-      cd: '%(pythonpath)s'
-      prefix: '%(activate)s'
+      cd: '{pythonpath}'
+      prefix: '{activate}'
       shell_env:
-        PYTHONPATH: '%(pythonpath)s'
-        DJANGO_SETTINGS_MODULE: '%(settings)s'
+        PYTHONPATH: '{pythonpath}'
+        DJANGO_SETTINGS_MODULE: '{settings}'
       commands:
         - django-admin.py syncdb
         - django-admin.py migrate
@@ -171,7 +187,6 @@ Complete Django Example::
       repo_url: git@myhost.tld:myrepo.git
       git_ref: develop
       deploy_dir: /home/staging/deploy
-      keep_releases: 3
 
       hosts:
         staging@myhost.tld:
@@ -279,3 +294,4 @@ config loaded merges items. If you remove the two extra steps you can see that
 the configuration for preview becomes quite concise, less than 10 lines.
 
 .. _.format() method: http://docs.python.org/2/library/string.html#format-string-syntax
+.. _YAML: http://yaml.org/

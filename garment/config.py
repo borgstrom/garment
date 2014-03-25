@@ -229,11 +229,12 @@ def load(target, config_file):
     for hostname, hostconfig in fab.env.config['hosts'].iteritems():
         roles['all'].append(hostname)
 
-        for role in hostconfig['roles']:
-            if role not in roles:
-                roles[role] = [hostname]
-            else:
-                roles[role].append(hostname)
+        if hostconfig and 'roles' in hostconfig:
+            for role in hostconfig['roles']:
+                if role not in roles:
+                    roles[role] = [hostname]
+                else:
+                    roles[role].append(hostname)
 
     # set the roles with fabric
     fab.env.roledefs.update(roles)
@@ -275,7 +276,7 @@ def load(target, config_file):
 
 
 @fab.task
-def show(target, config_file):
+def show(target, config_file='deploy.conf'):
     '''
     Loads and pretty prints the specified targets config (for debugging)
     '''
