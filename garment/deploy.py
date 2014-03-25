@@ -10,10 +10,20 @@ __all__ = ('deploy', 'list', 'rollback')
 
 
 @fab.task
-def deploy(target, config_file="deploy.conf"):
+def deploy(target, config_file="deploy.conf", include=None, exclude=None):
     """
-    Deploy your application to the specified 'target' in deploy.conf
+    Deploy your app to the 'target' environment specified in deploy.conf
     """
+    if include is not None and exclude is not None:
+        return fab.abort("You cannot supply include and exclude values")
+
+    # convert include & exclude to lists
+    if include is not None:
+        include = include.split(',')
+
+    if exclude is not None:
+        exclude = exclude.split(',')
+
     # load our config file
     config.load(target, config_file)
 
@@ -26,13 +36,13 @@ def deploy(target, config_file="deploy.conf"):
     fab.execute(release.create, release_name, role='all')
 
     # run our before tasks for this release
-    stages.execute("before", release_name)
+    stages.execute("before", release_name, include=include, exclude=exclude)
 
     # update the current symlink
     fab.execute(release.make_current, release_name, role='all')
 
     # run our after tasks for this release
-    stages.execute("after", release_name)
+    stages.execute("after", release_name, include=include, exclude=exclude)
 
     # clean up the releases directory
     fab.execute(release.cleanup, role='all')
@@ -72,19 +82,29 @@ def list(target, config_file="deploy.conf"):
     fab.puts("Available releases:")
     for rel in releases:
         try:
-            ts, ref = rel.split("-")
-            iso8601_date = iso8601.parse_date(ts)
-            release_name = " ".join([
-                "-",
-                iso8601_date.strftime("%a, %d %b %Y %H:%M:%S +0000"),
-                "GIT reference",
-                ref
-            ])
+            if rel.count("-") == 2:
+                ts, ref, user = rel.split("-")
+            else:
+                ts, ref = rel.split("-")
+                user = None
         except ValueError:
             release_name = "- No info available"
+        else:
+            iso8601_date = iso8601.parse_date(ts)
+            parts = [
+                iso8601_date.strftime("%a, %d %b %Y %H:%M:%S +0000"),
+                "-",
+                "GIT reference",
+                ref
+            ]
 
-        fab.puts("* {rel} {release_name}".format(
-            rel=rel,
+            if user is not None:
+                parts.append("by")
+                parts.append(user)
+
+            release_name = " ".join(parts)
+
+        fab.puts("* {release_name}".format(
             release_name=release_name
         ))
 

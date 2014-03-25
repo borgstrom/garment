@@ -1,7 +1,9 @@
-import fabric.api as fab
-
 import datetime
+import getpass
 import os
+import socket
+
+import fabric.api as fab
 
 from .config import conf
 
@@ -24,7 +26,11 @@ def name(target):
                                 capture=True)
         release_name = "-".join((
             now.strftime("%Y%m%dT%H%M%S%z"),
-            release_ref
+            release_ref,
+            "@".join([
+                getpass.getuser(),
+                socket.gethostname()
+            ])
         ))
 
     # set some extra variables
@@ -77,13 +83,11 @@ def create(release_name):
             fab.run("test -d {releases_dir} || mkdir -p {releases_dir}".format(
                 releases_dir=releases_dir
             ))
-            fab.run("|".join([
-                "git archive --format=tar --prefix={release_name}/ {git_ref}",
-                "(cd {releases_dir}; tar xf -)".format(
-                    release_name=release_name,
-                    git_ref=git_ref,
-                    releases_dir=releases_dir)
-            ]))
+            fab.run("git archive --format=tar --prefix={release_name}/ {git_ref} | "  # noqa
+                    "(cd {releases_dir}; tar xf -)".format(
+                        release_name=release_name,
+                        git_ref=git_ref,
+                        releases_dir=releases_dir))
 
             # now find any submodules
             fab.puts("Looking for submodules...")

@@ -53,51 +53,73 @@ def run(commands, prefix=None, cd=None, shell_env=None):
         _run()
 
 
-def execute(category, release):
+def execute(category, release, include=None, exclude=None):
     """
-    Run all stages in the specified category for the specified release
+    Run all step in the specified stage for the specified release
 
     :param category: The category of stages to run (before or after)
     :param release: The name of the release on the host
+    :param include: A iterable of names of the steps to be run, all other
+                    steps are skipped
+    :param exclude: A iterable of names of the steps to be skipped, all
+                    other steps are run
     :return: None
     """
+    if include is not None and exclude is not None:
+        return fab.abort("You cannot supply include and exclude values")
+
     if 'stages' not in fab.env.config:
         return fab.warn("No stages defined in your config")
 
     if category not in fab.env.config['stages']:
         return fab.warn("No stages defined in the '%s' category" % category)
 
-    for stage in fab.env.config['stages'][category]:
-        if 'id' not in stage:
-            fab.warn("No 'id' defined for stage: %s" % stage)
+    for step in fab.env.config['stages'][category]:
+        if 'id' not in step:
+            fab.warn("No 'id' defined for step: %s" % step)
             continue
 
-        if 'commands' not in stage:
-            fab.warn("No 'commands' defined for stage: %s" % stage)
+        if include is not None:
+            if step['id'] not in include:
+                fab.puts("Step '%s' is not in our include list, skipping..." %
+                         step['id'])
+                continue
+
+        if exclude is not None:
+            if step['id'] in exclude:
+                fab.puts("Step '%s' is in our exclude list, skipping..." %
+                         step['id'])
+                continue
+
+        if 'commands' not in step:
+            fab.warn("No 'commands' defined for step: %s" % step)
             continue
 
-        if not isinstance(stage['commands'], (list, tuple)):
-            fab.warn("The supplied commands are no in the correct format: %s" % stage['commands'])
+        if not isinstance(step['commands'], (list, tuple)):
+            fab.warn("The supplied commands are no in the correct format: %s" %
+                     step['commands'])
             continue
 
-        roles = stage.get('roles')
+        roles = step.get('roles')
 
-        fab.puts("\nRunning stage: %s (roles: %s)" % (stage['id'],
-                                                      ", ".join(roles)))
+        fab.puts("\nRunning step: %s (roles: %s)" % (step['id'],
+                                                     ", ".join(roles)))
 
-        prefix = variable_template(stage.get('prefix'))
-        cd = variable_template(stage.get('cd'))
+        prefix = variable_template(step.get('prefix'))
+        cd = variable_template(step.get('cd'))
 
-        if 'shell_env' in stage:
+        if 'shell_env' in step:
             shell_env = {}
-            for env_name in stage['shell_env']:
-                shell_env[env_name] = variable_template(stage['shell_env'][env_name])
+            for env_name in step['shell_env']:
+                shell_env[env_name] = variable_template(
+                    step['shell_env'][env_name]
+                )
         else:
             shell_env = None
 
         commands = [
             variable_template(command)
-            for command in stage['commands']
+            for command in step['commands']
         ]
 
         fab.execute(run, commands, prefix, cd, shell_env,
